@@ -47,7 +47,7 @@ static int supportEventHandler(unsigned int id, unsigned long long from,
     
     unsigned int *support = (unsigned int *) ctx;
     
-    #pragma omp atomic
+    //#pragma omp atomic
     support[id]++;
     
     return 0;
@@ -420,7 +420,7 @@ int main(int argc, char *argv[]) {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for ( int i=0; i<num_inputs*num_dbs; i++ ) {
         run_ctx ctx = contexts[i];
         
