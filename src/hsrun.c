@@ -8,6 +8,8 @@
 #include "hs_compile_mnrl.h"
 #include "ht.h"
 #include "read_input.h"
+#include <time.h>
+
 
 typedef struct run_ctx_t {
     r_map *report_map;
@@ -55,7 +57,8 @@ static int supportEventHandler(unsigned int id, unsigned long long from,
 static void usage(char *prog) {
     fprintf(stderr, "Usage: %s [-t NUM_TREADS] [--support] <hs databases> <input files>\n", prog);
     fprintf(stderr, "     -t NUM_THREADS     use no more than NUM_THREADS threads\n");
-    fprintf(stderr, "     --support          enable aggregation of reports; print final counts\n");
+    fprintf(stderr, "     -d          duplicate input stream\n");
+    fprintf(stderr, "     -i          input length\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -70,7 +73,9 @@ int main(int argc, char *argv[]) {
     bool support = false;
     
     int num_threads = 0;
-    
+    int input_len = 2000000;
+    int duplicate_input_stream = 1;
+
     char *db_fns[argc];
     char *input_fns[argc];
     
@@ -82,6 +87,30 @@ int main(int argc, char *argv[]) {
             if ( i+1 <= argc ) {
                 i++;
                 num_threads = atoi(argv[i]);
+            } else {
+                usage(argv[0]);
+                return 44;  
+            }
+            continue;
+        }
+
+        if ( strcmp("-i", argv[i]) == 0 ) {
+            
+            if ( i+1 <= argc ) {
+                i++;
+                input_len = atoi(argv[i]);
+            } else {
+                usage(argv[0]);
+                return 44;  
+            }
+            continue;
+        }
+
+        if ( strcmp("-d", argv[i]) == 0 ) {
+            
+            if ( i+1 <= argc ) {
+                i++;
+                duplicate_input_stream = atoi(argv[i]);
             } else {
                 usage(argv[0]);
                 return 44;  
@@ -116,11 +145,18 @@ int main(int argc, char *argv[]) {
         usage(argv[0]);
         return 45;
     }
+    bool isDup = false;
+    if (duplicate_input_stream > 1 && num_inputs == 1) {
+        num_inputs = duplicate_input_stream;
+        isDup = true;
+    }
     
     run_ctx contexts[num_dbs*num_inputs];
     
     size_t inputs_length[num_inputs];
-    
+    printf("num_inputs = %u\n", num_inputs);
+
+
     // for cleanup
     hs_database_t *dbs_to_delete[num_dbs];
     char *inputs_to_delete[num_inputs];
@@ -128,26 +164,55 @@ int main(int argc, char *argv[]) {
     unsigned int *supports_to_delete[num_dbs];
     
     //loop through the inputs to get input data
-    for ( int j=0; j < num_inputs; j++ ) {
-        char *inputFN = input_fns[j];
-        size_t length;
-        
-        /* Next, we read the input data file into a buffer. */
-        char *inputData;
-        inputData = readInputData(inputFN, &length);
-        if (!inputData) {
-            fprintf(stderr, "ERROR: Unable to read input data '%s'. Exiting.\n", inputFN);
-            //hs_free_database(database);
-            for( int i=0; i<j; i++){
-                free(inputs_to_delete[i]);
+    if (isDup) {
+        printf("duplicate_input_stream = %d\n", duplicate_input_stream);
+        for (int j = 0; j < num_inputs; j++) {
+            char *inputFN = input_fns[0];
+            size_t length;
+
+            /* Next, we read the input data file into a buffer. */
+            char *inputData;
+            inputData = readInputData(inputFN, &length, input_len);
+            if (!inputData) {
+                fprintf(stderr,
+                        "ERROR: Unable to read input data '%s'. Exiting.\n",
+                        inputFN);
+                // hs_free_database(database);
+                for (int i = 0; i < j; i++) {
+                  free(inputs_to_delete[i]);
+                }
+                return 4;
             }
-            return 4;
+
+            inputs_to_delete[j] = inputData;
+            inputs_length[j] = length;
+            printf("inputs_length_%d = %lu\n", j, inputs_length[j]);
         }
-        
-        inputs_to_delete[j] = inputData;
-        inputs_length[j] = length;
+    } else {
+        for (int j = 0; j < num_inputs; j++) {
+            char *inputFN = input_fns[j];
+            size_t length;
+
+            /* Next, we read the input data file into a buffer. */
+            char *inputData;
+            inputData = readInputData(inputFN, &length, input_len);
+            if (!inputData) {
+                fprintf(stderr,
+                        "ERROR: Unable to read input data '%s'. Exiting.\n",
+                        inputFN);
+                // hs_free_database(database);
+                for (int i = 0; i < j; i++) {
+                  free(inputs_to_delete[i]);
+                }
+                return 4;
+            }
+
+            inputs_to_delete[j] = inputData;
+            inputs_length[j] = length;
+            printf("inputs_length_%d = %lu\n", j, inputs_length[j]);
+        }
     }
-    
+
     // loop through the dbs
     for ( int i=0; i < num_dbs; i++ ) {
         
@@ -158,7 +223,7 @@ int main(int argc, char *argv[]) {
         char *hsSerDB;
         char *hsmSer;
         
-        hsmSer = readInputData(hsDB, &length);
+        hsmSer = readInputData(hsDB, &length, UINT_MAX);
         
         if(!hsmSer) {
             return 2;
@@ -351,6 +416,10 @@ int main(int argc, char *argv[]) {
         omp_set_dynamic(1);
         omp_set_num_threads(num_threads);
     }
+
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+    
     #pragma omp parallel for
     for ( int i=0; i<num_inputs*num_dbs; i++ ) {
         run_ctx ctx = contexts[i];
@@ -377,17 +446,39 @@ int main(int argc, char *argv[]) {
         }
         
     }
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+    uint64_t delta_us = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
+    
+    printf("delta_us = %lu\n", delta_us);
+    double total_bytes = 0;
+    for (int i = 0; i < num_inputs; i++) {
+        total_bytes += inputs_length[i];
+    }
+
+    double second = (0.0+delta_us) / 1000000;
+    printf("time_second = %.2lf\n", second);
+
+    double throughput_bytepersecond = total_bytes / second;
+    double throughput_MBs = throughput_bytepersecond / 1000.0 / 1000.0;
+    printf("%.2lf MB/s\n", throughput_MBs);
+
     // print out supports
     if(support) {
+        int total = 0;
         printf("File, ID, Report ID, Count\n");
         for ( int i=0; i<num_dbs; i++ ) {
             r_map *mapping = rmaps_to_delete[i];
             for ( int j=0; j<count_mapping(&mapping); j++) {
                 r_map *m = find_mapping(j, &mapping);
                 printf("%s, %s, %s, %u\n", db_fns[i], m->name, m->report, supports_to_delete[i][j]);
+                total+=supports_to_delete[i][j];
             }
         }
+        printf("total_count = %d\n", total);
     }
+    printf("throughput = %.2lf MB/s\n", throughput_MBs);
+    printf("Fake Validation PASS \n FINISHED\n");
     
     // cleanup
     for ( int i=0; i<num_inputs*num_dbs; i++ ) {

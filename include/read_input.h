@@ -40,7 +40,7 @@
  * Fill a data buffer from the given filename, returning it and filling @a
  * length with its length. Returns NULL on failure.
  */
-char *readInputData(const char *inputFN, size_t *length) {
+char *readInputData(const char *inputFN, size_t *length, size_t input_len) {
     
 
     FILE *f = fopen(inputFN, "rb");
@@ -76,6 +76,9 @@ char *readInputData(const char *inputFN, size_t *length) {
      * limit the size of our buffer appropriately. */
     if ((unsigned long)dataLen > UINT_MAX) {
         dataLen = UINT_MAX;
+        printf("WARNING: clipping data to %ld bytes\n", dataLen);
+    } else if (dataLen > input_len) {
+        dataLen = input_len;
         printf("WARNING: clipping data to %ld bytes\n", dataLen);
     } else if (dataLen == 0) {
         fprintf(stderr, "ERROR: input file \"%s\" is empty\n", inputFN);
