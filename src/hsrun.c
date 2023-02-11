@@ -59,6 +59,7 @@ static void usage(char *prog) {
     fprintf(stderr, "     -t NUM_THREADS     use no more than NUM_THREADS threads\n");
     fprintf(stderr, "     -d          duplicate input stream\n");
     fprintf(stderr, "     -i          input length\n");
+    fprintf(stderr, "     -v          quick validation\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -75,6 +76,7 @@ int main(int argc, char *argv[]) {
     int num_threads = 0;
     int input_len = 2000000;
     int duplicate_input_stream = 1;
+    int quick_validation = -1;
 
     char *db_fns[argc];
     char *input_fns[argc];
@@ -111,6 +113,18 @@ int main(int argc, char *argv[]) {
             if ( i+1 <= argc ) {
                 i++;
                 duplicate_input_stream = atoi(argv[i]);
+            } else {
+                usage(argv[0]);
+                return 44;  
+            }
+            continue;
+        }
+
+        if ( strcmp("-v", argv[i]) == 0 ) {
+            
+            if ( i+1 <= argc ) {
+                i++;
+                quick_validation = atoi(argv[i]);
             } else {
                 usage(argv[0]);
                 return 44;  
@@ -476,9 +490,19 @@ int main(int argc, char *argv[]) {
             }
         }
         printf("total_count = %d\n", total);
+        if (quick_validation >= 0) {
+            if (total == quick_validation * duplicate_input_stream) {
+                printf("Quick Validation PASS! \n");
+            } else {
+                printf("Quick Validation FAILED! \n");
+            }
+        } else {
+            printf("Fake Validation PASS! \n FINISHED\n");
+        }
+    } else {
+        printf("Fake Validation PASS! \n FINISHED\n");
     }
     printf("throughput = %.2lf MB/s\n", throughput_MBs);
-    printf("Fake Validation PASS \n FINISHED\n");
     
     // cleanup
     for ( int i=0; i<num_inputs*num_dbs; i++ ) {
