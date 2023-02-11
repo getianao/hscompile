@@ -497,10 +497,10 @@ int main(int argc, char *argv[]) {
                 printf("Quick Validation FAILED! \n");
             }
         } else {
-            printf("Fake Validation PASS! \n FINISHED\n");
+            printf("Fake Validation PASS! \n");
         }
     } else {
-        printf("Fake Validation PASS! \n FINISHED\n");
+        printf("Fake Validation PASS! \n");
     }
     printf("throughput = %.2lf MB/s\n", throughput_MBs);
     
@@ -519,6 +519,7 @@ int main(int argc, char *argv[]) {
     for ( int i=0; i<num_inputs; i++ ) {
         free(inputs_to_delete[i]);
     }
+    printf("FINISHED\n");
     
     return 0;
 }
