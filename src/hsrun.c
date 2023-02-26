@@ -479,7 +479,7 @@ int main(int argc, char *argv[]) {
 
     // print out supports
     if(support) {
-        int total = 0;
+        unsigned long long int total = 0;
         printf("File, ID, Report ID, Count\n");
         for ( int i=0; i<num_dbs; i++ ) {
             r_map *mapping = rmaps_to_delete[i];
@@ -489,9 +489,10 @@ int main(int argc, char *argv[]) {
                 total+=supports_to_delete[i][j];
             }
         }
-        printf("total_count = %d\n", total);
+        printf("total_count = %llu\n", total);
         if (quick_validation >= 0) {
-            if (total == quick_validation * duplicate_input_stream) {
+            if (total ==
+                ((long long int)(quick_validation)) * duplicate_input_stream) {
                 printf("Quick Validation PASS! \n");
             } else {
                 printf("Quick Validation FAILED! \n");
