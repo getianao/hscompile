@@ -67,6 +67,11 @@ int main(int argc, char *argv[]) {
         usage(argv[0]);
 		return 1;
     }
+
+    printf("Command: ");
+    for (int i = 0; i < argc; i++)
+        printf("%s ", argv[i]);
+    printf("\n");
     
     unsigned int num_dbs = 0;
     unsigned int num_inputs = 0;
@@ -491,9 +496,13 @@ int main(int argc, char *argv[]) {
         }
         printf("total_count = %llu\n", total);
         if (quick_validation >= 0) {
-            if (total ==
+            if (total >=
                 ((long long int)(quick_validation)) * duplicate_input_stream) {
-                printf("Quick Validation PASS! \n");
+                if (total == ((long long int)(quick_validation)) *
+                                 duplicate_input_stream)
+                    printf("Quick Validation PASS! (perfect)\n");
+                else
+                    printf("Quick Validation PASS! (not perfect)\n");
             } else {
                 printf("Quick Validation FAILED! \n");
             }
