@@ -1,0 +1,6 @@
+[submodule "lib/hyperscan"]
+	path = lib/hyperscan
+	url = git@github.com:intel/hyperscan.git
+[submodule "lib/mnrl"]
+	path = lib/mnrl
+	url = git@github.com:kevinaangstadt/mnrl.git
