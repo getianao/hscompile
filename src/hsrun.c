@@ -304,6 +304,7 @@ int main(int argc, char *argv[]) {
         // make a support array if needed
         if(support) {
             supports_to_delete[i] = (unsigned int*) malloc(sizeof(unsigned int) * count_mapping(&report_map));
+            memset(supports_to_delete[i], 0, sizeof(unsigned int) * count_mapping(&report_map));
         } else {
             supports_to_delete[i] = NULL;
         }
