@@ -9,8 +9,21 @@
 #include "ht.h"
 #include "read_input.h"
 #include <time.h>
+#include <unistd.h>
+#include <stdint.h>
 
 
+uint64_t read_rapl_energy() {
+    FILE *file = fopen("/sys/class/powercap/intel-rapl/intel-rapl:0/energy_uj", "r");
+    if (!file) {
+        perror("Failed to open RAPL energy file");
+        return 0;
+    }
+    uint64_t energy;
+    fscanf(file, "%lu", &energy);
+    fclose(file);
+    return energy;
+}
 typedef struct run_ctx_t {
     r_map *report_map;
     hs_database_t *database;
@@ -47,7 +60,7 @@ static int supportEventHandler(unsigned int id, unsigned long long from,
     
     unsigned int *support = (unsigned int *) ctx;
     
-    //#pragma omp atomic
+    #pragma omp atomic
     support[id]++;
     
     return 0;
@@ -174,6 +187,7 @@ int main(int argc, char *argv[]) {
     
     size_t inputs_length[num_inputs];
     printf("num_inputs = %u\n", num_inputs);
+    printf("num_dbs = %u\n", num_dbs);
 
 
     // for cleanup
@@ -438,9 +452,10 @@ int main(int argc, char *argv[]) {
     }
 
     struct timespec start, end;
+    uint64_t start_energy = read_rapl_energy();
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     
-    //#pragma omp parallel for
+    #pragma omp parallel for
     for ( int i=0; i<num_inputs*num_dbs; i++ ) {
         run_ctx ctx = contexts[i];
         
@@ -468,6 +483,7 @@ int main(int argc, char *argv[]) {
     }
 
     clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+    uint64_t end_energy = read_rapl_energy();
     uint64_t delta_us = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
     
     printf("delta_us = %lu\n", delta_us);
@@ -514,6 +530,12 @@ int main(int argc, char *argv[]) {
         printf("Fake Validation PASS! \n");
     }
     printf("throughput = %.2lf MB/s\n", throughput_MBs);
+    double power = (end_energy - start_energy) / 1000000.0;
+    printf("Power: %lu J\n", power);
+    double watts = power / second;
+    printf("Watts: %.2lf W\n", watts);
+    double power_efficiency = throughput_MBs / power;
+    printf("Power_Efficiency: %.2lf MB/J\n", power_efficiency);
     
     // cleanup
     for ( int i=0; i<num_inputs*num_dbs; i++ ) {
