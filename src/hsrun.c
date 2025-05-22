@@ -531,7 +531,7 @@ int main(int argc, char *argv[]) {
     }
     printf("throughput = %.2lf MB/s\n", throughput_MBs);
     double power = (end_energy - start_energy) / 1000000.0;
-    printf("Power: %lu J\n", power);
+    printf("Power: %f J\n", power);
     double watts = power / second;
     printf("Watts: %.2lf W\n", watts);
     double power_efficiency = throughput_MBs / power;
