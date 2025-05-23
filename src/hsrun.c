@@ -529,13 +529,13 @@ int main(int argc, char *argv[]) {
     } else {
         printf("Fake Validation PASS! \n");
     }
-    printf("throughput = %.2lf MB/s\n", throughput_MBs);
+    printf("throughput = %lf MB/s\n", throughput_MBs);
     double power = (end_energy - start_energy) / 1000000.0;
-    printf("Power: %f J\n", power);
+    printf("Power: %lf J\n", power);
     double watts = power / second;
-    printf("Watts: %.2lf W\n", watts);
-    double power_efficiency = throughput_MBs / power;
-    printf("Power_Efficiency: %.2lf MB/J\n", power_efficiency);
+    printf("Watts: %lf W\n", watts);
+    double power_efficiency = total_bytes / 1000000.0 / power;
+    printf("Power_Efficiency: %lf MB/J\n", power_efficiency);
     
     // cleanup
     for ( int i=0; i<num_inputs*num_dbs; i++ ) {
